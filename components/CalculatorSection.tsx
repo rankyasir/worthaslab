@@ -80,6 +80,14 @@ export default function CalculatorSection() {
   }, []);
 
   useEffect(() => {
+    // Don't re-search when the query is just the selected card's label
+    // (selectCard sets it) — avoids the stray "No cards found" dropdown
+    // appearing behind the verdict.
+    if (selected && query === `${selected.name} — ${selected.set_name}`) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
     if (query.trim().length < 2) {
       setResults([]);
       setOpen(false);
@@ -96,7 +104,7 @@ export default function CalculatorSection() {
       }
     }, 250);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, selected]);
 
   async function selectCard(card: CardPrice) {
     setSelected(card);

@@ -61,3 +61,28 @@ export function getPost(slug: string): Post | null {
     html,
   };
 }
+
+// Related posts for internal linking: score by shared keyword tokens,
+// fall back to recency. Powers the "Keep reading" section on article pages.
+export function getRelatedPosts(slug: string, count = 3): PostMeta[] {
+  const all = getPostMetas().filter((p) => p.slug !== slug);
+  const current = getPostMetas().find((p) => p.slug === slug);
+  const tokens = (s: string) =>
+    new Set(
+      s
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length > 2)
+    );
+  const base = tokens(`${current?.keywords ?? ""} ${current?.title ?? ""}`);
+  const scored = all.map((p) => {
+    const t = tokens(`${p.keywords} ${p.title}`);
+    let score = 0;
+    base.forEach((w) => {
+      if (t.has(w)) score++;
+    });
+    return { p, score };
+  });
+  scored.sort((a, b) => b.score - a.score || (b.p.date > a.p.date ? 1 : -1));
+  return scored.slice(0, count).map((s) => s.p);
+}

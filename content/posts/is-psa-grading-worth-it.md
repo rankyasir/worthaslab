@@ -48,7 +48,7 @@ Here's what actually burns collectors: they do the math on the PSA 10 price whil
 
 ## What about CGC, BGS, SGC?
 
-PSA commands the highest resale premiums in most categories — that's why this guide (and most of the market) defaults to it. CGC is growing fast (up 631% by some measures) and is gaining ground, especially where collectors want a credible PSA alternative. But if your goal is maximizing resale value per dollar of grading cost, PSA 10 remains the benchmark everything else is measured against. The math in this guide works for any grader — just swap in that company's fees and that company's realized prices.
+PSA commands the highest resale premiums in most categories — that's why this guide (and most of the market) defaults to it. CGC has been growing fast and is gaining ground, especially where collectors want a credible PSA alternative. But if your goal is maximizing resale value per dollar of grading cost, PSA 10 remains the benchmark everything else is measured against. The math in this guide works for any grader — just swap in that company's fees and that company's realized prices.
 
 ## The bottom line
 

@@ -208,8 +208,8 @@ export default function CalculatorSection() {
         )}
       </div>
 
-      {/* Calculator panel */}
-      {selected && verdict && style && (
+      {/* Calculator panel — verdict is gated once the free limit is hit */}
+      {selected && verdict && style && !limitHit && (
         <div id="verdict" className="mt-10 bg-surface border border-line rounded-2xl p-6 md:p-10 card-glow">
           <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
             <div>
@@ -288,24 +288,41 @@ export default function CalculatorSection() {
             </label>
           </div>
 
-          {limitHit ? (
-            <div className="mt-8 rounded-xl border border-accent/40 bg-accent/5 p-5 text-center">
-              <p className="font-bold mb-1">You&apos;ve used your {FREE_CALCULATIONS_PER_MONTH} free calculations this month</p>
-              <p className="text-sm text-muted mb-4">Go unlimited — every card, every tier, every day.</p>
-              <Link href="/pricing" className="btn-accent inline-block">Upgrade to Pro — $9.99/mo</Link>
-            </div>
+          {remaining !== null && (
+            <p className="mt-6 text-center text-xs text-muted">
+              {isPro ? (
+                <span className="text-accent font-bold">PRO — unlimited calculations</span>
+              ) : signedIn ? (
+                <>{remaining} of {FREE_CALCULATIONS_PER_MONTH} free calculations left this month</>
+              ) : (
+                <>{remaining} of {FREE_CALCULATIONS_PER_MONTH} free calculations left — <Link href="/signup" className="text-accent underline">sign up free</Link> to save your history</>
+              )}
+            </p>
+          )}
+        </div>
+      )}
+      {/* Hard gate: once the free limit is hit, the verdict is hidden until
+          the user signs up (guests) or upgrades to Pro (free accounts). */}
+      {selected && limitHit && (
+        <div id="verdict" className="mt-10 bg-surface border border-accent/40 rounded-2xl p-6 md:p-10 text-center card-glow">
+          <div className="text-4xl mb-4">🔒</div>
+          <h3 className="text-2xl font-extrabold tracking-tight mb-2">
+            You&apos;ve used your {FREE_CALCULATIONS_PER_MONTH} free calculations this month
+          </h3>
+          <p className="text-muted text-sm mb-6 max-w-md mx-auto">
+            {signedIn
+              ? "Go unlimited — every card, every tier, every day."
+              : "Create a free account to get 5 more calculations every month — plus your calculation history."}
+          </p>
+          {signedIn ? (
+            <Link href="/pricing" className="btn-accent inline-block">Upgrade to Pro — $9.99/mo</Link>
           ) : (
-            remaining !== null && (
-              <p className="mt-6 text-center text-xs text-muted">
-                {isPro ? (
-                  <span className="text-accent font-bold">PRO — unlimited calculations</span>
-                ) : signedIn ? (
-                  <>{remaining} of {FREE_CALCULATIONS_PER_MONTH} free calculations left this month</>
-                ) : (
-                  <>{remaining} of {FREE_CALCULATIONS_PER_MONTH} free calculations left — <Link href="/signup" className="text-accent underline">sign up free</Link> to save your history</>
-                )}
-              </p>
-            )
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link href="/signup" className="btn-accent inline-block">Create free account</Link>
+              <Link href="/pricing" className="text-sm text-muted hover:text-accent transition-colors underline">
+                or go Pro for unlimited
+              </Link>
+            </div>
           )}
         </div>
       )}

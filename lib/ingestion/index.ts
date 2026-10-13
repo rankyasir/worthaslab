@@ -72,7 +72,7 @@ async function writeSnapshot(
   if (error) throw error;
 }
 
-async function getKnownOpenseaIds(): Promise<Set<string>> {
+export async function getKnownOpenseaIds(): Promise<Set<string>> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from("cards")
@@ -176,5 +176,78 @@ export async function runNightlyIngest(): Promise<IngestSummary> {
     });
   }
 
+  return summary;
+}
+
+/**
+ * Upsert cards discovered by live search (or any ad-hoc listing batch).
+ * Returns the DB ids of the upserted cards so callers can re-query them.
+ */
+export async function upsertLiveListings(
+  listings: IngestedListing[]
+): Promise<{ upserted: number; ids: string[] }> {
+  const ids: string[] = [];
+  let upserted = 0;
+  for (const l of listings) {
+    try {
+      const cardId = await upsertCard(l);
+      await writeSnapshot(cardId, l.askPriceUsd, l.grade, l.source, l.capturedAt);
+      ids.push(cardId);
+      upserted += 1;
+    } catch (e) {
+      console.error(`upsertLiveListings: failed on ${l.externalId}`, e);
+    }
+  }
+  return { upserted, ids };
+}
+
+/**
+ * One-time accelerated backfill: pages deeper into Courtyard listings and
+ * upserts up to ~100 new tokens in a single run. Trigger manually via
+ * GET /api/cron/ingest?secret=...&mode=backfill (safe to re-run — upserts
+ * dedupe by slug, snapshots dedupe by (card_id, captured_at)).
+ */
+export async function runBackfillIngest(): Promise<IngestSummary> {
+  const summary: IngestSummary = { ranAt: new Date().toISOString(), adapters: [] };
+  if (!isSupabaseConfigured()) {
+    summary.adapters.push({
+      adapter: "backfill",
+      skipped: true,
+      skipReason: "Supabase not configured — nothing to write to",
+      cardsUpserted: 0,
+      snapshotsWritten: 0,
+    });
+    return summary;
+  }
+  try {
+    const known = await getKnownOpenseaIds();
+    const result = await fetchCourtyardListings({
+      limit: 200,
+      maxPages: 10,
+      maxNewTokens: 100,
+      knownExternalIds: known,
+    });
+    const entry = {
+      adapter: "courtyard-backfill",
+      skipped: result.skipped,
+      skipReason: result.skipReason,
+      cardsUpserted: 0,
+      snapshotsWritten: 0,
+    };
+    if (!result.skipped) {
+      const { upserted } = await upsertLiveListings(result.listings);
+      entry.cardsUpserted = upserted;
+      entry.snapshotsWritten = upserted;
+    }
+    summary.adapters.push(entry);
+  } catch (e) {
+    summary.adapters.push({
+      adapter: "courtyard-backfill",
+      skipped: true,
+      skipReason: e instanceof Error ? e.message : "adapter threw",
+      cardsUpserted: 0,
+      snapshotsWritten: 0,
+    });
+  }
   return summary;
 }

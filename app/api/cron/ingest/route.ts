@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { runNightlyIngest } from "@/lib/ingestion";
+import { runNightlyIngest, runBackfillIngest } from "@/lib/ingestion";
 
 // GET /api/cron/ingest — nightly price ingestion.
 // Protected by CRON_SECRET (Vercel Cron sends it as Authorization: Bearer <secret>).
 // Schedule is configured in vercel.json (free tier: once daily).
+// Add &mode=backfill for a one-time accelerated catalog sync (safe to re-run).
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
@@ -19,7 +20,9 @@ export async function GET(req: Request) {
   }
 
   try {
-    const summary = await runNightlyIngest();
+    const url = new URL(req.url);
+    const summary =
+      url.searchParams.get("mode") === "backfill" ? await runBackfillIngest() : await runNightlyIngest();
     return NextResponse.json(summary);
   } catch (e) {
     console.error("nightly ingest failed:", e);

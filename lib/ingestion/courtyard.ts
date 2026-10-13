@@ -106,6 +106,8 @@ export async function fetchCourtyardListings(opts?: {
   knownExternalIds?: Set<string>;
   /** cap on new-token trait fetches per run (rate-limit safety) */
   maxNewTokens?: number;
+  /** cap on listing pages per run (each page = up to `limit` tokens) */
+  maxPages?: number;
 }): Promise<AdapterResult & CourtyardFetch> {
   const apiKey = process.env.OPENSEA_API_KEY;
   if (!apiKey) {
@@ -123,6 +125,7 @@ export async function fetchCourtyardListings(opts?: {
   const headers = { Accept: "application/json", "X-API-KEY": apiKey };
   const pageLimit = Math.min(opts?.limit ?? 100, 200);
   const maxNewTokens = opts?.maxNewTokens ?? 60;
+  const maxPages = opts?.maxPages ?? 5;
   const known = opts?.knownExternalIds ?? new Set<string>();
   const now = new Date().toISOString().slice(0, 10);
 
@@ -152,7 +155,7 @@ export async function fetchCourtyardListings(opts?: {
     cursor = body.next ?? null;
     pages += 1;
     await sleep(250);
-  } while (cursor && pages < 5);
+  } while (cursor && pages < maxPages);
 
   // 2) Fetch traits per token (new tokens only — traits never change).
   // Every token seen also goes into priceUpdates so known tokens still get
@@ -164,7 +167,7 @@ export async function fetchCourtyardListings(opts?: {
     const externalId = `opensea:matic:${tokenId}`;
     priceUpdates.push({ externalId, askUsd });
     if (known.has(externalId)) continue; // already in DB — price snapshot handled by caller
-    if (fetched >= maxNewTokens) break;
+    if (fetched >= maxNewTokens) continue; // cap trait fetches, keep scanning for priceUpdates
     fetched += 1;
 
     const nftRes = await fetchWithRetry(

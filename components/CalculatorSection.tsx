@@ -46,6 +46,9 @@ export default function CalculatorSection() {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [isPro, setIsPro] = useState(false);
   const [limitHit, setLimitHit] = useState(false);
+  const [liveSearching, setLiveSearching] = useState(false);
+  const [liveTried, setLiveTried] = useState(false);
+  const [liveNewIds, setLiveNewIds] = useState<Set<string>>(new Set());
   const boxRef = useRef<HTMLDivElement>(null);
 
   const tier = GRADING_TIERS.find((t) => t.id === tierId) ?? GRADING_TIERS[0];
@@ -98,6 +101,7 @@ export default function CalculatorSection() {
         const res = await fetch(`/api/cards?q=${encodeURIComponent(query.trim())}`);
         const data = await res.json();
         setResults(data.cards ?? []);
+        setLiveNewIds(new Set((data.liveNewIds ?? []) as string[]));
         setOpen(true);
       } catch {
         setResults([]);
@@ -105,6 +109,30 @@ export default function CalculatorSection() {
     }, 250);
     return () => clearTimeout(t);
   }, [query, selected]);
+
+  // Reset the live-search attempt whenever the query changes.
+  useEffect(() => {
+    setLiveTried(false);
+    setLiveSearching(false);
+  }, [query]);
+
+  async function searchLive() {
+    const q = query.trim();
+    if (q.length < 2 || liveSearching) return;
+    setLiveSearching(true);
+    try {
+      const res = await fetch(`/api/cards?q=${encodeURIComponent(q)}&live=1`);
+      const data = await res.json();
+      setResults(data.cards ?? []);
+      setLiveNewIds(new Set((data.liveNewIds ?? []) as string[]));
+      setLiveTried(true);
+      setOpen(true);
+    } catch {
+      setLiveTried(true);
+    } finally {
+      setLiveSearching(false);
+    }
+  }
 
   async function selectCard(card: CardPrice) {
     setSelected(card);
@@ -191,6 +219,11 @@ export default function CalculatorSection() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-sm text-accent">${c.psa10_price.toLocaleString()}</span>
+                  {liveNewIds.has(c.id) && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-accent/50 text-accent">
+                      LIVE
+                    </span>
+                  )}
                   {c.demo && (
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-yellow-400/40 text-yellow-300">
                       DEMO
@@ -202,8 +235,24 @@ export default function CalculatorSection() {
           </div>
         )}
         {open && query.trim().length >= 2 && results.length === 0 && (
-          <div className="absolute top-full mt-2 w-full bg-surface border border-line rounded-xl px-5 py-4 text-sm text-muted z-30">
-            No cards found. Try &quot;Charizard&quot;, &quot;Pikachu&quot; or &quot;Doncic&quot;.
+          <div className="absolute top-full mt-2 w-full bg-surface border border-line rounded-xl px-5 py-4 z-30">
+            {!liveTried ? (
+              <div className="text-center">
+                <p className="text-sm text-muted mb-3">Not in our catalog yet.</p>
+                <button
+                  onClick={searchLive}
+                  disabled={liveSearching}
+                  className="btn-accent !py-2 !px-4 text-sm disabled:opacity-50"
+                >
+                  {liveSearching ? "Scanning Courtyard live…" : "🔍 Search live on Courtyard.io"}
+                </button>
+                <p className="text-xs text-muted mt-2">Checks live vault listings · found cards are saved to the catalog</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted text-center">
+                No cards found — even live on Courtyard.io. Try &quot;Charizard&quot;, &quot;Pikachu&quot; or &quot;Doncic&quot;.
+              </p>
+            )}
           </div>
         )}
       </div>

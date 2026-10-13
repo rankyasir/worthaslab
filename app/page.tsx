@@ -2,6 +2,7 @@ import Link from "next/link";
 import CalculatorSection from "@/components/CalculatorSection";
 import PricingCards from "@/components/PricingCards";
 import Faq from "@/components/Faq";
+import { getSupabaseServer, isSupabaseConfigured } from "@/lib/supabase-server";
 
 export const metadata = {
   title: "WorthASlab — Is it worth a slab?",
@@ -19,15 +20,34 @@ function SectionHeading({ kicker, title, sub }: { kicker: string; title: string;
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  // The "demo data" badge shows only until real market data lands in the
+  // catalog (live ingestion upserts non-demo cards). Then it hides itself.
+  let liveData = false;
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = getSupabaseServer();
+      const { count } = await supabase
+        .from("cards")
+        .select("id", { count: "exact", head: true })
+        .neq("source", "demo")
+        .limit(1);
+      liveData = (count ?? 0) > 0;
+    } catch {
+      liveData = false;
+    }
+  }
+
   return (
     <>
       {/* HERO */}
       <section className="relative z-10 max-w-7xl mx-auto px-5 pt-20 md:pt-28 pb-8 text-center">
-        <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest border border-yellow-400/40 text-yellow-300 rounded-full px-4 py-1.5 mb-7">
-          <span className="w-1.5 h-1.5 rounded-full bg-yellow-300 animate-pulse" />
-          Demo data — live market prices launching soon
-        </div>
+        {!liveData && (
+          <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest border border-yellow-400/40 text-yellow-300 rounded-full px-4 py-1.5 mb-7">
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-300 animate-pulse" />
+            Demo data — live market prices launching soon
+          </div>
+        )}
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.05]">
           PSA 10 vs Raw <span className="text-accent">— instantly.</span>
         </h1>

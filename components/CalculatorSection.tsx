@@ -96,16 +96,8 @@ export default function CalculatorSection() {
       setOpen(false);
       return;
     }
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/cards?q=${encodeURIComponent(query.trim())}`);
-        const data = await res.json();
-        setResults(data.cards ?? []);
-        setLiveNewIds(new Set((data.liveNewIds ?? []) as string[]));
-        setOpen(true);
-      } catch {
-        setResults([]);
-      }
+    const t = setTimeout(() => {
+      runSearch(query);
     }, 250);
     return () => clearTimeout(t);
   }, [query, selected]);
@@ -185,11 +177,36 @@ export default function CalculatorSection() {
 
   const style = verdict ? VERDICT_STYLES[verdict.verdict] : null;
 
+  async function runSearch(q: string) {
+    const trimmed = q.trim();
+    if (trimmed.length < 2) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/cards?q=${encodeURIComponent(trimmed)}`);
+      const data = await res.json();
+      setResults(data.cards ?? []);
+      setLiveNewIds(new Set((data.liveNewIds ?? []) as string[]));
+      setOpen(true);
+    } catch {
+      setResults([]);
+    }
+  }
+
   return (
     <section id="calculator" className="relative z-10 max-w-5xl mx-auto px-5 pt-10 pb-20">
       {/* Search-engine style search */}
-      <div ref={boxRef} className="relative max-w-2xl mx-auto">
-        <div className="flex items-center gap-3 bg-surface border border-line rounded-2xl px-5 py-4 focus-within:border-accent transition-colors shadow-[0_0_40px_rgba(0,255,136,0.06)]">
+      <form
+        ref={boxRef as any}
+        onSubmit={(e) => {
+          e.preventDefault();
+          runSearch(query);
+        }}
+        className="relative z-20 max-w-2xl mx-auto"
+      >
+        <div className="flex items-center gap-3 bg-surface border border-line rounded-2xl pl-5 pr-2 py-2 focus-within:border-accent transition-colors shadow-[0_0_40px_rgba(0,255,136,0.06)]">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="shrink-0">
             <circle cx="11" cy="11" r="7" stroke="#00ff88" strokeWidth="2" />
             <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="#00ff88" strokeWidth="2" strokeLinecap="round" />
@@ -199,9 +216,12 @@ export default function CalculatorSection() {
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => results.length > 0 && setOpen(true)}
             placeholder="Search any card — Charizard, Pikachu, Luka Doncic…"
-            className="bg-transparent outline-none w-full text-lg placeholder:text-[#5a5a6e]"
+            className="bg-transparent outline-none w-full text-lg placeholder:text-[#5a5a6e] py-2.5"
             aria-label="Search trading cards"
           />
+          <button type="submit" className="btn-accent !py-2.5 !px-6 text-sm shrink-0">
+            Search
+          </button>
         </div>
         {open && results.length > 0 && (
           <div className="absolute top-full mt-2 w-full bg-surface border border-line rounded-xl overflow-hidden shadow-2xl z-30">
@@ -255,7 +275,7 @@ export default function CalculatorSection() {
             )}
           </div>
         )}
-      </div>
+      </form>
 
       {/* Calculator panel — verdict is gated once the free limit is hit */}
       {selected && verdict && style && !limitHit && (

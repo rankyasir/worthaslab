@@ -8,7 +8,7 @@ import { upsertLiveListings } from "@/lib/ingestion";
 // DB is the fast primary search. Add &live=1 to also scan Courtyard's LIVE
 // OpenSea listings when the DB comes up short: matches are upserted into
 // the catalog, so the next search for the same card is instant.
-export const maxDuration = 30;
+export const maxDuration = 55;
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -21,7 +21,9 @@ export async function GET(req: Request) {
 
   if (wantLive && q.trim().length >= 2 && isSupabaseConfigured()) {
     try {
-      const res = await searchCourtyardLive(q.trim());
+      // Explicit user action — spend a bigger trait-fetch budget so the
+      // button actually finds the card instead of sampling too shallow.
+      const res = await searchCourtyardLive(q.trim(), { maxTraitFetches: 40, pages: 5 });
       live = { scanned: res.scanned, found: res.matched.length, skipped: res.skipped, skipReason: res.skipReason };
       if (!res.skipped && res.matched.length > 0) {
         const { ids } = await upsertLiveListings(res.matched);

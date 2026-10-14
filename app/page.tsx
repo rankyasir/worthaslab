@@ -25,7 +25,14 @@ function SectionHeading({ kicker, title, sub }: { kicker: string; title: string;
   );
 }
 
-function multBadge(m: number) {
+function multBadge(m: number | null) {
+  if (m == null) {
+    return (
+      <span className="font-mono text-sm px-2.5 py-1 rounded-lg border text-muted border-line bg-white/[0.03]">
+        —
+      </span>
+    );
+  }
   const label = `${m.toFixed(1)}x`;
   const cls =
     m >= 8
@@ -151,8 +158,8 @@ export default async function Home() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-5 text-right font-mono text-muted">${t.raw.toLocaleString()}</td>
-                    <td className="py-4 px-5 text-right font-mono text-accent font-bold">${t.psa10.toLocaleString()}</td>
+                    <td className="py-4 px-5 text-right font-mono text-muted">{t.raw > 0 ? `$${t.raw.toLocaleString()}` : "—"}</td>
+                    <td className="py-4 px-5 text-right font-mono text-accent font-bold">{t.psa10 > 0 ? `$${t.psa10.toLocaleString()}` : "—"}</td>
                     <td className="py-4 px-5 text-right">{multBadge(t.multiplier)}</td>
                     <td className="py-4 px-5">
                       <div className="flex justify-end">

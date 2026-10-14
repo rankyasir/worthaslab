@@ -16,7 +16,8 @@ export interface TopOpportunity {
   raw: number;
   psa9: number;
   psa10: number;
-  multiplier: number;
+  /** null when the card doesn't have both buckets yet (single-listing cards) */
+  multiplier: number | null;
   sales: number;
   demo: boolean;
   imageUrl: string | null;
@@ -69,7 +70,10 @@ function buildTop(
     if (!s) continue;
     const raw = Number(s.raw_price ?? 0);
     const psa10 = Number(s.psa10_price ?? 0);
-    if (raw <= 0 || psa10 <= 0) continue;
+    const psa9 = Number(s.psa9_price ?? 0);
+    // Include cards with ANY price data — live cards from a single listing
+    // often have just one bucket filled. Multiplier needs both buckets.
+    if (raw <= 0 && psa10 <= 0 && psa9 <= 0) continue;
     out.push({
       id: c.id,
       name: c.name,
@@ -78,16 +82,17 @@ function buildTop(
       cardNumber: c.card_number,
       category: c.category,
       raw,
-      psa9: Number(s.psa9_price ?? 0),
+      psa9,
       psa10,
-      multiplier: psa10 / raw,
+      multiplier: raw > 0 && psa10 > 0 ? psa10 / raw : null,
       sales: Number(s.sales_count ?? 0),
       demo: c.source === "demo",
       imageUrl: c.image_url ?? null,
       history: [],
     });
   }
-  out.sort((a, b) => b.multiplier - a.multiplier);
+  // Ranked by multiplier; cards without a computable multiplier go last.
+  out.sort((a, b) => (b.multiplier ?? -1) - (a.multiplier ?? -1));
   return out.slice(0, 8);
 }
 
@@ -114,8 +119,9 @@ function demoFallback(): HomepageData {
     });
   }
   const top = buildTop(cards, snaps);
-  const avg = top.length
-    ? top.reduce((a, t) => a + t.multiplier, 0) / top.length
+  const withMult = top.filter((t) => t.multiplier != null);
+  const avg = withMult.length
+    ? withMult.reduce((a, t) => a + (t.multiplier ?? 0), 0) / withMult.length
     : null;
   return {
     liveData: false,
@@ -172,8 +178,9 @@ export async function getHomepageData(): Promise<HomepageData> {
       if (h && h.length > 1) t.history = h;
       else if (t.psa10 > 0) t.history = [t.raw, t.psa10].filter((v) => v > 0);
     }
-    const avg = finalTop.length
-      ? finalTop.reduce((a, t) => a + t.multiplier, 0) / finalTop.length
+    const withMult = finalTop.filter((t) => t.multiplier != null);
+    const avg = withMult.length
+      ? withMult.reduce((a, t) => a + (t.multiplier ?? 0), 0) / withMult.length
       : null;
 
     // Fresh in the vault: newest catalog additions (live-first), for the scroller.

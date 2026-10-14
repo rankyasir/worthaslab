@@ -46,9 +46,11 @@ export default function CardScroller({ cards }: { cards: TopOpportunity[] }) {
                   DEMO
                 </span>
               )}
-              <span className="absolute top-2 right-2 font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-black/60 border border-accent/40 text-accent">
-                {c.multiplier.toFixed(1)}x
-              </span>
+              {c.multiplier != null && (
+                <span className="absolute top-2 right-2 font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-black/60 border border-accent/40 text-accent">
+                  {c.multiplier.toFixed(1)}x
+                </span>
+              )}
             </div>
             <div className="border-t border-line p-3">
               <p className="truncate text-xs text-muted" title={c.name}>
@@ -56,10 +58,10 @@ export default function CardScroller({ cards }: { cards: TopOpportunity[] }) {
               </p>
               <div className="mt-1 flex items-baseline justify-between gap-2">
                 <span className="font-mono text-sm font-bold text-accent">
-                  ${c.psa10.toLocaleString()}
+                  {c.psa10 > 0 ? `$${c.psa10.toLocaleString()}` : c.raw > 0 ? `$${c.raw.toLocaleString()}` : "—"}
                 </span>
                 <span className="text-[10px] text-muted uppercase tracking-wider">
-                  PSA 10
+                  {c.psa10 > 0 ? "PSA 10" : "Latest"}
                 </span>
               </div>
             </div>

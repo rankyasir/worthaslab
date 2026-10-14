@@ -30,31 +30,49 @@ export async function searchCards(query: string): Promise<CardPrice[]> {
   if (isSupabaseConfigured()) {
     try {
       const supabase = getSupabaseServer();
-      const { data, error } = await supabase
+      const select =
+        "id, name, set_name, year, category, card_number, slug, source, price_snapshots(raw_price, psa9_price, psa10_price, sales_count)";
+      const toCardPrice = (row: any): CardPrice => {
+        const snap = Array.isArray(row.price_snapshots)
+          ? row.price_snapshots[row.price_snapshots.length - 1]
+          : row.price_snapshots;
+        return {
+          id: row.id,
+          name: row.name,
+          set_name: row.set_name,
+          year: row.year,
+          category: row.category,
+          card_number: row.card_number,
+          slug: row.slug,
+          raw_price: Number(snap?.raw_price ?? 0),
+          psa9_price: Number(snap?.psa9_price ?? 0),
+          psa10_price: Number(snap?.psa10_price ?? 0),
+          sales_count: Number(snap?.sales_count ?? 0),
+          // Seed rows are honest DEMO samples — only ingested (non-demo)
+          // cards count as live data.
+          demo: row.source === "demo",
+        } as CardPrice;
+      };
+      // Prefer LIVE (ingested) cards; fall back to the DEMO seed only when
+      // the live catalog has no match. Once ingestion runs, seed rows
+      // disappear from results automatically — no manual cleanup needed.
+      const live = await supabase
         .from("cards")
-        .select("id, name, set_name, year, category, card_number, slug, price_snapshots(raw_price, psa9_price, psa10_price, sales_count)")
+        .select(select)
         .ilike("name", `%${q}%`)
+        .neq("source", "demo")
         .limit(10);
-      if (!error && data) {
-        return data.map((row: any) => {
-          const snap = Array.isArray(row.price_snapshots)
-            ? row.price_snapshots[row.price_snapshots.length - 1]
-            : row.price_snapshots;
-          return {
-            id: row.id,
-            name: row.name,
-            set_name: row.set_name,
-            year: row.year,
-            category: row.category,
-            card_number: row.card_number,
-            slug: row.slug,
-            raw_price: Number(snap?.raw_price ?? 0),
-            psa9_price: Number(snap?.psa9_price ?? 0),
-            psa10_price: Number(snap?.psa10_price ?? 0),
-            sales_count: Number(snap?.sales_count ?? 0),
-            demo: false,
-          } as CardPrice;
-        });
+      if (!live.error && live.data && live.data.length > 0) {
+        return live.data.map(toCardPrice);
+      }
+      const seed = await supabase
+        .from("cards")
+        .select(select)
+        .ilike("name", `%${q}%`)
+        .eq("source", "demo")
+        .limit(10);
+      if (!seed.error && seed.data) {
+        return seed.data.map(toCardPrice);
       }
     } catch {
       // fall through to demo data

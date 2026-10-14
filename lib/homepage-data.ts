@@ -53,8 +53,11 @@ function buildTop(
   cards: RawCard[],
   latestSnap: Map<string, RawSnap>
 ): TopOpportunity[] {
+  // Once live (ingested) cards exist, demo seed rows are hidden automatically.
+  const hasLive = cards.some((c) => c.source !== "demo");
+  const pool = hasLive ? cards.filter((c) => c.source !== "demo") : cards;
   const out: TopOpportunity[] = [];
-  for (const c of cards) {
+  for (const c of pool) {
     const s = latestSnap.get(c.id);
     if (!s) continue;
     const raw = Number(s.raw_price ?? 0);

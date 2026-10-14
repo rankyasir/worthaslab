@@ -196,7 +196,7 @@ export default function CalculatorSection() {
   }
 
   return (
-    <section id="calculator" className="relative z-10 max-w-5xl mx-auto px-5 pt-10 pb-20">
+    <section id="calculator" className="relative z-20 max-w-5xl mx-auto px-5 pt-10 pb-20">
       {/* Search-engine style search */}
       <form
         ref={boxRef as any}
@@ -228,12 +228,25 @@ export default function CalculatorSection() {
             {results.map((c) => (
               <button
                 key={c.id}
+                type="button"
                 onClick={() => selectCard(c)}
-                className="w-full text-left px-5 py-3.5 hover:bg-white/5 transition-colors flex items-center justify-between gap-3 border-b border-line/50 last:border-0"
+                className="w-full text-left px-4 py-3 hover:bg-white/5 transition-colors flex items-center gap-3 border-b border-line/50 last:border-0"
               >
-                <div>
-                  <div className="font-semibold">{c.name}</div>
-                  <div className="text-xs text-muted">
+                {c.image_url ? (
+                  <img
+                    src={c.image_url}
+                    alt=""
+                    loading="lazy"
+                    className="w-10 h-14 object-contain rounded bg-white/[0.04] shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-14 rounded bg-white/[0.04] shrink-0 flex items-center justify-center">
+                    <span className="text-lg font-extrabold text-white/15">{c.name.charAt(0)}</span>
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold truncate">{c.name}</div>
+                  <div className="text-xs text-muted truncate">
                     {c.set_name} · {c.year} · #{c.card_number}
                   </div>
                 </div>

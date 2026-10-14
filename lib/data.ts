@@ -17,10 +17,11 @@ export interface CardPrice {
   psa10_price: number;
   sales_count: number;
   demo: boolean;
+  image_url: string | null;
 }
 
 function demoToCardPrice(c: DemoCard): CardPrice {
-  return { ...c, demo: true };
+  return { ...c, demo: true, image_url: null };
 }
 
 export async function searchCards(query: string): Promise<CardPrice[]> {
@@ -31,7 +32,7 @@ export async function searchCards(query: string): Promise<CardPrice[]> {
     try {
       const supabase = getSupabaseServer();
       const select =
-        "id, name, set_name, year, category, card_number, slug, source, price_snapshots(raw_price, psa9_price, psa10_price, sales_count)";
+        "id, name, set_name, year, category, card_number, slug, source, image_url, price_snapshots(raw_price, psa9_price, psa10_price, sales_count)";
       const toCardPrice = (row: any): CardPrice => {
         const snap = Array.isArray(row.price_snapshots)
           ? row.price_snapshots[row.price_snapshots.length - 1]
@@ -51,6 +52,7 @@ export async function searchCards(query: string): Promise<CardPrice[]> {
           // Seed rows are honest DEMO samples — only ingested (non-demo)
           // cards count as live data.
           demo: row.source === "demo",
+          image_url: row.image_url ?? null,
         } as CardPrice;
       };
       // Prefer LIVE (ingested) cards; fall back to the DEMO seed only when

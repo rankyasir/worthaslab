@@ -2,6 +2,8 @@ import Link from "next/link";
 import CalculatorSection from "@/components/CalculatorSection";
 import PricingCards from "@/components/PricingCards";
 import Faq from "@/components/Faq";
+import CardScroller from "@/components/CardScroller";
+import Sparkline from "@/components/Sparkline";
 import { getHomepageData, timeAgo } from "@/lib/homepage-data";
 
 export const metadata = {
@@ -38,7 +40,7 @@ function multBadge(m: number) {
 
 export default async function Home() {
   const data = getHomepageData();
-  const { liveData, cardsTracked, snapshots, avgMultiplier, lastUpdated, top } = await data;
+  const { liveData, cardsTracked, snapshots, avgMultiplier, lastUpdated, top, fresh } = await data;
 
   const heroStats: Array<[string, string]> = [
     [cardsTracked.toLocaleString(), "cards tracked"],
@@ -83,6 +85,20 @@ export default async function Home() {
       {/* SEARCH + CALCULATOR */}
       <CalculatorSection />
 
+      {/* FRESH IN THE VAULT — visual card scroller */}
+      <section className="relative z-10 max-w-6xl mx-auto px-5 pt-4 pb-8">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="font-mono text-accent text-sm font-bold mb-3">Fresh in the vault</div>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">Newest cards tracked</h2>
+            <p className="text-muted mt-3 max-w-2xl leading-relaxed">
+              The latest additions to the catalog — tap any card to run it through the calculator.
+            </p>
+          </div>
+        </div>
+        <CardScroller cards={fresh} />
+      </section>
+
       {/* 01 / TOP OPPORTUNITIES — ranked table */}
       <section className="relative z-10 max-w-6xl mx-auto px-5 py-16">
         <div className="mb-10">
@@ -95,7 +111,7 @@ export default async function Home() {
         </div>
         <div className="bg-surface border border-line rounded-2xl overflow-hidden card-glow">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
+            <table className="w-full text-sm min-w-[760px]">
               <thead>
                 <tr className="text-left text-muted text-xs uppercase tracking-widest border-b border-line">
                   <th className="py-4 px-5 font-bold">#</th>
@@ -103,6 +119,7 @@ export default async function Home() {
                   <th className="py-4 px-5 font-bold text-right">Raw</th>
                   <th className="py-4 px-5 font-bold text-right">PSA 10</th>
                   <th className="py-4 px-5 font-bold text-right">Multiplier</th>
+                  <th className="py-4 px-5 font-bold text-right">Trend</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,17 +127,38 @@ export default async function Home() {
                   <tr key={t.id} className="border-b border-line/50 last:border-0 hover:bg-white/[0.02] transition-colors">
                     <td className="py-4 px-5 font-mono text-muted font-bold">{String(i + 1).padStart(2, "0")}</td>
                     <td className="py-4 px-5">
-                      <div className="font-bold flex items-center gap-2">
-                        {t.name}
-                        {t.demo && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-yellow-400/40 text-yellow-300">DEMO</span>
+                      <div className="flex items-center gap-3">
+                        {t.imageUrl ? (
+                          <img
+                            src={t.imageUrl}
+                            alt=""
+                            loading="lazy"
+                            className="w-9 h-12 object-contain rounded bg-white/[0.04] shrink-0"
+                          />
+                        ) : (
+                          <div className="w-9 h-12 rounded bg-white/[0.04] shrink-0 flex items-center justify-center">
+                            <span className="font-extrabold text-white/15">{t.name.charAt(0)}</span>
+                          </div>
                         )}
+                        <div className="min-w-0">
+                          <div className="font-bold flex items-center gap-2">
+                            <span className="truncate">{t.name}</span>
+                            {t.demo && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-yellow-400/40 text-yellow-300 shrink-0">DEMO</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted mt-0.5 truncate">{t.setName}{t.year ? ` · ${t.year}` : ""}{t.cardNumber ? ` · #${t.cardNumber}` : ""}</div>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted mt-0.5">{t.setName}{t.year ? ` · ${t.year}` : ""}{t.cardNumber ? ` · #${t.cardNumber}` : ""}</div>
                     </td>
                     <td className="py-4 px-5 text-right font-mono text-muted">${t.raw.toLocaleString()}</td>
                     <td className="py-4 px-5 text-right font-mono text-accent font-bold">${t.psa10.toLocaleString()}</td>
                     <td className="py-4 px-5 text-right">{multBadge(t.multiplier)}</td>
+                    <td className="py-4 px-5">
+                      <div className="flex justify-end">
+                        <Sparkline points={t.history} />
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

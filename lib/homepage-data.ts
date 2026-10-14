@@ -19,6 +19,9 @@ export interface TopOpportunity {
   multiplier: number;
   sales: number;
   demo: boolean;
+  imageUrl: string | null;
+  /** recent price points (psa10 ?? raw) for the sparkline, oldest → newest */
+  history: number[];
 }
 
 export interface HomepageData {
@@ -28,6 +31,8 @@ export interface HomepageData {
   avgMultiplier: number | null;
   lastUpdated: string | null;
   top: TopOpportunity[];
+  /** newest catalog additions, for the visual card scroller */
+  fresh: TopOpportunity[];
 }
 
 interface RawCard {
@@ -38,6 +43,8 @@ interface RawCard {
   card_number: string | null;
   category: string;
   source: string;
+  image_url: string | null;
+  created_at?: string;
 }
 
 interface RawSnap {
@@ -76,6 +83,8 @@ function buildTop(
       multiplier: psa10 / raw,
       sales: Number(s.sales_count ?? 0),
       demo: c.source === "demo",
+      imageUrl: c.image_url ?? null,
+      history: [],
     });
   }
   out.sort((a, b) => b.multiplier - a.multiplier);
@@ -91,6 +100,7 @@ function demoFallback(): HomepageData {
     card_number: c.card_number,
     category: c.category,
     source: "demo",
+    image_url: null,
   }));
   const snaps = new Map<string, RawSnap>();
   for (const c of DEMO_CARDS) {
@@ -114,6 +124,7 @@ function demoFallback(): HomepageData {
     avgMultiplier: avg,
     lastUpdated: null,
     top,
+    fresh: top.slice(0, 8),
   };
 }
 
@@ -123,7 +134,7 @@ export async function getHomepageData(): Promise<HomepageData> {
     const admin = getSupabaseAdmin();
     const { data: cards } = await admin
       .from("cards")
-      .select("id, name, set_name, year, card_number, category, source")
+      .select("id, name, set_name, year, card_number, category, source, image_url, created_at")
       .limit(2000);
     const { data: snaps } = await admin
       .from("price_snapshots")
@@ -135,7 +146,18 @@ export async function getHomepageData(): Promise<HomepageData> {
     if (cardRows.length === 0) return demoFallback();
 
     const latest = new Map<string, RawSnap>();
+    const series = new Map<string, number[]>();
     let lastUpdated: string | null = null;
+    // snaps are newest-first; build per-card history oldest→newest for sparklines
+    const asc = [...((snaps ?? []) as RawSnap[])].reverse();
+    for (const s of asc) {
+      const pt = Number(s.psa10_price ?? 0) || Number(s.raw_price ?? 0);
+      if (pt > 0) {
+        const arr = series.get(s.card_id) ?? [];
+        arr.push(pt);
+        series.set(s.card_id, arr.slice(-14));
+      }
+    }
     for (const s of (snaps ?? []) as RawSnap[]) {
       if (!latest.has(s.card_id)) latest.set(s.card_id, s);
       if (!lastUpdated || s.captured_at > lastUpdated) lastUpdated = s.captured_at;
@@ -145,9 +167,31 @@ export async function getHomepageData(): Promise<HomepageData> {
     const top = buildTop(cardRows, latest);
     // If DB has cards but no usable snapshots yet, show demo top as filler.
     const finalTop = top.length > 0 ? top : demoFallback().top;
+    for (const t of finalTop) {
+      const h = series.get(t.id);
+      if (h && h.length > 1) t.history = h;
+      else if (t.psa10 > 0) t.history = [t.raw, t.psa10].filter((v) => v > 0);
+    }
     const avg = finalTop.length
       ? finalTop.reduce((a, t) => a + t.multiplier, 0) / finalTop.length
       : null;
+
+    // Fresh in the vault: newest catalog additions (live-first), for the scroller.
+    const pool = liveData ? cardRows.filter((c) => c.source !== "demo") : cardRows;
+    const freshRows = [...pool]
+      .sort((a, b) => String(b.created_at ?? "") .localeCompare(String(a.created_at ?? "")))
+      .slice(0, 8);
+    const freshLatest = new Map<string, RawSnap>();
+    for (const c of freshRows) {
+      const s = latest.get(c.id);
+      if (s) freshLatest.set(c.id, s);
+    }
+    let fresh = buildTop(freshRows, freshLatest);
+    if (fresh.length === 0) fresh = finalTop.slice(0, 8);
+    for (const t of fresh) {
+      const h = series.get(t.id);
+      if (h && h.length > 1) t.history = h;
+    }
 
     return {
       liveData,
@@ -156,6 +200,7 @@ export async function getHomepageData(): Promise<HomepageData> {
       avgMultiplier: avg,
       lastUpdated,
       top: finalTop,
+      fresh,
     };
   } catch {
     return demoFallback();

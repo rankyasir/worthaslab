@@ -45,6 +45,19 @@ async function upsertCard(l: IngestedListing): Promise<string> {
   return card.id as string;
 }
 
+/** Which price bucket a listing belongs in.
+ *  Courtyard grade traits look like "10 PRISTINE" / "9 MINT" with a separate
+ *  Grader trait, so by the time we see it the grade is "CGC 10" (grader
+ *  FIRST). Extract the numeric grade instead of expecting it at the start. */
+function gradeBucket(grade: string | null): "psa10" | "psa9" | "raw" {
+  const m = (grade ?? "").toUpperCase().match(/(\d+(?:\.\d+)?)/);
+  if (!m) return "raw";
+  const num = parseFloat(m[1]);
+  if (num === 10) return "psa10";
+  if (num >= 9) return "psa9";
+  return "raw";
+}
+
 async function writeSnapshot(
   cardId: string,
   askUsd: number | null,
@@ -60,10 +73,9 @@ async function writeSnapshot(
     captured_at: capturedAt,
   };
   if (askUsd != null) {
-    const g = (grade ?? "").toUpperCase();
-    const graded = /PSA|CGC|BGS|SGC/.test(g);
-    if (graded && /^10\b/.test(g)) snapshot.psa10_price = askUsd;
-    else if (graded && /^9\b/.test(g)) snapshot.psa9_price = askUsd;
+    const bucket = gradeBucket(grade);
+    if (bucket === "psa10") snapshot.psa10_price = askUsd;
+    else if (bucket === "psa9") snapshot.psa9_price = askUsd;
     else snapshot.raw_price = askUsd;
   }
   const { error } = await admin

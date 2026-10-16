@@ -59,33 +59,70 @@ export default async function Home() {
   return (
     <>
       {/* HERO */}
-      <section className="relative z-10 max-w-7xl mx-auto px-5 pt-16 md:pt-24 pb-6 text-center">
+      <section className="relative z-10 max-w-7xl mx-auto px-5 pt-10 md:pt-16 pb-8">
         {!liveData && (
-          <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest border border-yellow-400/40 text-yellow-300 rounded-full px-4 py-1.5 mb-7">
+          <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest border border-yellow-400/40 text-yellow-300 rounded-full px-4 py-1.5 mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-yellow-300 animate-pulse" />
             Demo data — live market prices launching soon
           </div>
         )}
-        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.05]">
-          PSA 10 vs Raw <span className="text-accent">— instantly.</span>
-        </h1>
-        <p className="text-muted text-lg md:text-xl mt-6 max-w-2xl mx-auto leading-relaxed">
-          Type any trading card. See what it sells for raw, as a PSA 9, and as a PSA 10 —
-          then get a data-backed verdict: <span className="text-white font-semibold">grade it or skip it.</span>
-        </p>
-        <div className="mt-9 flex flex-wrap justify-center gap-4">
-          <a href="#calculator" className="btn-accent">Try the calculator</a>
-          <Link href="/pricing" className="btn-ghost">See pricing</Link>
-        </div>
-
-        {/* Live hero stats */}
-        <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-px bg-line/60 border border-line/60 rounded-2xl overflow-hidden max-w-4xl mx-auto text-left">
-          {heroStats.map(([v, l]) => (
-            <div key={l} className="bg-ink/90 px-6 py-5">
-              <div className="text-2xl md:text-3xl font-extrabold font-mono text-white">{v}</div>
-              <div className="text-muted text-xs mt-1 uppercase tracking-widest">{l}</div>
+        <div className="grid lg:grid-cols-[1.02fr_.98fr] gap-10 lg:gap-14 items-center">
+          <div className="max-w-2xl">
+            <div className="text-accent text-xs font-extrabold uppercase tracking-[0.2em] mb-4">The collector&apos;s grading dashboard</div>
+            <h1 className="text-5xl md:text-6xl xl:text-7xl font-extrabold tracking-tight leading-[1.02]">
+              Is this card worth a <span className="text-accent">slab?</span>
+            </h1>
+            <p className="text-muted text-lg md:text-xl mt-6 max-w-xl leading-relaxed">
+              Compare raw, PSA 9 and PSA 10 prices, factor in grading costs, and get a clear data-backed verdict before you submit.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a href="#calculator" className="btn-accent">Calculate a card <span aria-hidden="true">→</span></a>
+              <Link href="#rankings" className="btn-ghost">Explore card rankings</Link>
             </div>
-          ))}
+            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
+              <span><b className="text-white">{cardsTracked.toLocaleString()}</b> cards in the catalog</span>
+              <span><b className="text-white">{snapshots.toLocaleString()}</b> price records</span>
+              <span className="text-accent">Free to explore</span>
+            </div>
+          </div>
+
+          {/* At-a-glance market board */}
+          <div className="rounded-3xl border border-line bg-surface/90 p-4 sm:p-6 shadow-[0_28px_90px_rgba(0,0,0,.45)]">
+            <div className="flex items-center justify-between gap-3 border-b border-line pb-4 mb-3">
+              <div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted">Grading market</div>
+                <div className="font-bold mt-1">Cards collectors are watching</div>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-[10px] uppercase tracking-wider font-bold text-accent">
+                <span className={`w-1.5 h-1.5 rounded-full ${liveData ? "bg-accent" : "bg-yellow-300"}`} />{liveData ? "Catalog data" : "Preview data"}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {top.slice(0, 4).map((card, i) => (
+                <a href="#calculator" key={card.id} className="group flex items-center gap-3 rounded-2xl border border-transparent bg-white/[0.025] px-3 py-3 hover:border-accent/30 hover:bg-white/[0.045] transition-colors">
+                  <div className="flex h-12 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-gradient-to-br from-accent/20 via-[#151924] to-[#0d0e13]">
+                    {card.imageUrl ? <img src={card.imageUrl} alt="" className="h-full w-full object-contain p-1" /> : <span className="font-mono text-sm font-black text-accent/80">{String(i + 1).padStart(2, "0")}</span>}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold group-hover:text-accent transition-colors">{card.name}</div>
+                    <div className="truncate text-xs text-muted mt-1">{card.setName}{card.year ? ` · ${card.year}` : ""}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-mono text-sm font-bold">{card.psa10 > 0 ? `$${card.psa10.toLocaleString()}` : "—"}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted mt-1">PSA 10</div>
+                  </div>
+                  <div className="hidden sm:block min-w-[58px] text-right">
+                    {multBadge(card.multiplier)}
+                    <div className="text-[9px] uppercase tracking-wider text-muted mt-1">multiplier</div>
+                  </div>
+                </a>
+              ))}
+              {top.length === 0 && <div className="rounded-2xl border border-dashed border-line p-6 text-sm text-muted">Card rankings are being prepared. Try the calculator or browse the catalog soon.</div>}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {heroStats.slice(2).map(([v, l]) => <div key={l} className="rounded-xl border border-line bg-black/20 px-4 py-3"><div className="font-mono text-lg font-bold">{v}</div><div className="text-[10px] uppercase tracking-widest text-muted mt-1">{l}</div></div>)}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -107,7 +144,7 @@ export default async function Home() {
       </section>
 
       {/* 01 / TOP OPPORTUNITIES — ranked table */}
-      <section className="relative z-10 max-w-6xl mx-auto px-5 py-16">
+      <section id="rankings" className="relative z-10 max-w-6xl mx-auto px-5 py-16">
         <div className="mb-10">
           <div className="font-mono text-accent text-sm font-bold mb-3">01 / Rankings</div>
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">Top grading opportunities right now</h2>
